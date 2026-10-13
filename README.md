@@ -5,7 +5,8 @@ Most guides use one ESP32 per battery. Here **a single ESP32** connects over Blu
 Step-by-step video (French, English subtitles) on the **Alf Fait Maison** channel: *link coming soon*
 
 ## Hardware
-- 1 × ESP32-WROOM-32U (external antenna, recommended when the batteries are far from the router)
+- 1 × **ESP32-WROOM-32U**, the version **with an external antenna** (IPEX / u.FL connector), sold with its antenna.
+  ⚠️ Make sure you get the **32U**, not the 32D or 32E with a built-in antenna: range matters when the batteries are far from the router, and the 3D case is made for it.
 - 2 × JK BMS (tested with JK_PB2A16S20P, hardware V19A, protocol `JK02_32S`)
 - 1 USB charger to power the ESP32
 - Optional: the 3D-printed case (`boitier_3d` folder)
