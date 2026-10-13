@@ -15,6 +15,7 @@ Step-by-step video (French, English subtitles) on the **Alf Fait Maison** channe
 1. Install **ESPHome Device Builder** in Home Assistant (Settings > Add-ons > Add-on store).
 2. Create a new ESP32 device, click **Edit** and paste `esp32_2_jk_bms.yaml`.
 3. Replace `XX:XX:XX:XX:XX:01` and `XX:XX:XX:XX:XX:02` with the Bluetooth addresses of your two BMS (the free nRF Connect app shows them: devices whose name starts with JK).
+   ⚠️ Use an **Android** phone: on iPhone, Apple hides Bluetooth addresses and nRF Connect cannot show them.
 4. Fill in your secrets (see `secrets.exemple.yaml`).
 5. **Install** > Plug into this computer the first time; later updates are wireless.
 
