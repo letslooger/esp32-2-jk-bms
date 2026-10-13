@@ -44,9 +44,11 @@ external_components:
   - source: ${external_components_source}
     refresh: 0s
 
+# Rien a renseigner : le Wi-Fi vient des secrets crees par ESPHome a la creation
+# de l'appareil. / Nothing to fill in: Wi-Fi comes from the secrets ESPHome
+# created with the device.
+# Optionnel / optional : chiffrement de l'API (voir LISEZMOI / see README)
 api:
-  encryption:
-    key: !secret api_encryption_key   # garde la cle generee par ESPHome / keep the key ESPHome generated
 
 # Ne PAS ajouter "power_save_mode: none" : le Wi-Fi et le Bluetooth
 # partagent la meme radio et ont besoin du mode par defaut pour cohabiter.
@@ -55,7 +57,7 @@ wifi:
   password: !secret wifi_password
   ap:
     ssid: ESP32 BATTERIES Fallback
-    password: !secret fallback_password
+    password: !secret wifi_password
 
 captive_portal:
 
