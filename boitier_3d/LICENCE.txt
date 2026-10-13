@@ -1,0 +1,6 @@
+Boîtier ESP32-WROOM-32U rallongé de 5 mm / 5 mm longer ESP32-WROOM-32U casing
+Remix de / remix of : "Boîtier ESP32-WROOM-32U" par Loiseau créatif (@loiseaucreatif)
+https://www.printables.com/model/762529-esp32-wroom-32u-casing
+Licence / License : Creative Commons BY-NC-SA 4.0
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+Modification : longueur intérieure augmentée de 5 mm / inner length increased by 5 mm.
