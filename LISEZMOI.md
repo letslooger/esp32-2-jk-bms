@@ -5,7 +5,8 @@ La plupart des tutos utilisent un ESP32 par batterie. Ici, **un seul ESP32** se 
 Vidéo pas à pas (chaîne **Alf Fait Maison**) : *lien à venir*
 
 ## Matériel
-- 1 × ESP32-WROOM-32U (avec antenne externe, conseillé si les batteries sont loin de la box)
+- 1 × **ESP32-WROOM-32U**, la version **avec antenne externe** (prise IPEX / u.FL), livrée avec son antenne.
+  ⚠️ Bien prendre la **32U**, pas la 32D ou 32E à antenne intégrée : la portée change tout si les batteries sont loin de la box, et le boîtier 3D est prévu pour elle.
 - 2 × BMS JK (testé avec JK_PB2A16S20P, matériel V19A, protocole `JK02_32S`)
 - 1 chargeur USB pour alimenter l'ESP32
 - En option : le boîtier imprimé en 3D (dossier `boitier_3d`)
