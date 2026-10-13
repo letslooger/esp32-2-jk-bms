@@ -16,7 +16,8 @@ Step-by-step video (French, English subtitles) on the **Alf Fait Maison** channe
 2. Create a new ESP32 device, click **Edit** and paste `esp32_2_jk_bms.yaml`.
 3. Replace `XX:XX:XX:XX:XX:01` and `XX:XX:XX:XX:XX:02` with the Bluetooth addresses of your two BMS (the free nRF Connect app shows them: devices whose name starts with JK).
    ⚠️ Use an **Android** phone: on iPhone, Apple hides Bluetooth addresses and nRF Connect cannot show them.
-4. Fill in your secrets (see `secrets.exemple.yaml`).
+4. Nothing else to fill in: ESPHome already saved your Wi-Fi when you created the device.
+   (Optional: to encrypt the connection, add `encryption:` / `key:` under `api:`, see `secrets.exemple.yaml`.)
 5. **Install** > Plug into this computer the first time; later updates are wireless.
 
 ## How two batteries work
