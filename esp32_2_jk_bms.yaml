@@ -1,0 +1,472 @@
+# =====================================================================
+#  UN SEUL ESP32 POUR DEUX BMS JK  /  ONE ESP32 FOR TWO JK BMS
+#  Chaine YouTube "Alf Fait Maison"
+#  Base : esp32-ble-example.yaml de syssi/esphome-jk-bms
+#  (https://github.com/syssi/esphome-jk-bms), licence Apache 2.0.
+#  FICHIER MODIFIE / MODIFIED FILE : 2 BMS sur 1 ESP32, prefixe B2,
+#  surveillance BLE, signal Bluetooth, resistances des cellules.
+#  Inspire de la video 126 du Profes'Solaire
+#  (https://www.youtube.com/watch?v=ZjxKqJwwoc8)
+# =====================================================================
+# =====================================================================
+#  ESP32 BATTERIES - ESP32-WROOM-32U (antenne externe IPEX / u.FL)
+#  Lecture de 2 JK-BMS (JK_PB2A16S20P, hw V19A) en Bluetooth
+# =====================================================================
+#  NOUVEAUTES par rapport a la version precedente :
+#   - Logger en INFO au lieu de DEBUG (moins de charge processeur)
+#   - Capteurs "signal Bluetooth" de chaque BMS (pour regler l'antenne)
+#   - Reglages "number" retires (moins de memoire utilisee,
+#     les reglages restent modifiables dans l'appli JK)
+#   - Resistances des 16 cellules REMISES pour les 2 BMS (13/10/2026)
+#   - Les noms des capteurs utilises par Home Assistant sont INCHANGES
+#     (power, current, state of charge, total voltage...)
+# =====================================================================
+
+substitutions:
+  name: jk-bms
+  device_description: "Monitor and control a JK-BMS via bluetooth"
+  external_components_source: github://syssi/esphome-jk-bms@main
+  # JK_PB2A16S20P hardware V19A -> JK02_32S
+  protocol_version: JK02_32S
+
+esphome:
+  name: esp32-batterie-1
+  friendly_name: ESP32 BATTERIE 1
+
+# ESP32-WROOM-32U = carte "esp32dev". Rien a declarer pour l'antenne :
+# le module 32U n'a que la prise externe, elle est utilisee d'office.
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+external_components:
+  - source: ${external_components_source}
+    refresh: 0s
+
+api:
+  encryption:
+    key: !secret api_encryption_key   # garde la cle generee par ESPHome / keep the key ESPHome generated
+
+# Ne PAS ajouter "power_save_mode: none" : le Wi-Fi et le Bluetooth
+# partagent la meme radio et ont besoin du mode par defaut pour cohabiter.
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: ESP32 BATTERIES Fallback
+    password: !secret fallback_password
+
+captive_portal:
+
+ota:
+  platform: esphome
+  on_begin:
+    then:
+      - switch.turn_off: ble_client_switch0
+      - switch.turn_off: ble_client_switch1
+      - logger.log: "BLE connection suspended for OTA update"
+
+logger:
+  level: INFO
+
+esp32_ble_tracker:
+  scan_parameters:
+    active: false
+
+ble_client:
+  - mac_address: "XX:XX:XX:XX:XX:01"   # adresse Bluetooth du BMS 1 / Bluetooth address of BMS 1
+    id: client0
+  - mac_address: "XX:XX:XX:XX:XX:02"   # adresse Bluetooth du BMS 2 / Bluetooth address of BMS 2
+    id: client1
+
+jk_bms_ble:
+  - ble_client_id: client0
+    protocol_version: ${protocol_version}
+    throttle: 10s
+    id: bms0
+  - ble_client_id: client1
+    protocol_version: ${protocol_version}
+    throttle: 10s
+    id: bms1
+
+# Surveillance : si un BMS est hors ligne depuis 3 min,
+# on coupe puis on relance sa connexion Bluetooth
+interval:
+  - interval: 1min
+    then:
+      - if:
+          condition:
+            for:
+              time: 3min
+              condition:
+                binary_sensor.is_off: bms0_online
+          then:
+            - logger.log: "BMS 1 hors ligne depuis 3 min -> reconnexion BLE"
+            - switch.turn_off: ble_client_switch0
+            - delay: 5s
+            - switch.turn_on: ble_client_switch0
+      - if:
+          condition:
+            for:
+              time: 3min
+              condition:
+                binary_sensor.is_off: bms1_online
+          then:
+            - logger.log: "BMS 2 hors ligne depuis 3 min -> reconnexion BLE"
+            - switch.turn_off: ble_client_switch1
+            - delay: 5s
+            - switch.turn_on: ble_client_switch1
+
+binary_sensor:
+  - platform: status
+    name: "ESP32 BMS en ligne"
+
+  - platform: jk_bms_ble
+    jk_bms_ble_id: bms0
+    balancing:
+      name: "balancing"
+    charging:
+      name: "charging"
+    discharging:
+      name: "discharging"
+    heating:
+      name: "heating"
+    online_status:
+      name: "online status"
+      id: bms0_online
+
+  - platform: jk_bms_ble
+    jk_bms_ble_id: bms1
+    balancing:
+      name: "B2 balancing"
+    charging:
+      name: "B2 charging"
+    discharging:
+      name: "B2 discharging"
+    heating:
+      name: "B2 heating"
+    online_status:
+      name: "B2 online status"
+      id: bms1_online
+
+button:
+  - platform: restart
+    name: "ESP32 BMS redemarrer"
+
+  - platform: jk_bms_ble
+    jk_bms_ble_id: bms0
+    retrieve_settings:
+      name: "retrieve settings"
+    retrieve_device_info:
+      name: "retrieve device info"
+
+  - platform: jk_bms_ble
+    jk_bms_ble_id: bms1
+    retrieve_settings:
+      name: "B2 retrieve settings"
+    retrieve_device_info:
+      name: "B2 retrieve device info"
+
+sensor:
+  # --- Diagnostic ESP32 ---
+  - platform: wifi_signal
+    name: "ESP32 BMS signal Wi-Fi"
+    update_interval: 60s
+  - platform: uptime
+    name: "ESP32 BMS uptime"
+
+  # NOUVEAU : force du signal Bluetooth de chaque BMS
+  # (proche de 0 = bon ; -70 dBm = correct ; en dessous de -85 dBm = trop faible)
+  - platform: ble_client
+    type: rssi
+    ble_client_id: client0
+    name: "BMS 1 signal Bluetooth"
+    update_interval: 60s
+  - platform: ble_client
+    type: rssi
+    ble_client_id: client1
+    name: "BMS 2 signal Bluetooth"
+    update_interval: 60s
+
+  # --- Batterie 1 ---
+  - platform: jk_bms_ble
+    jk_bms_ble_id: bms0
+    min_cell_voltage:
+      name: "min cell voltage"
+    max_cell_voltage:
+      name: "max cell voltage"
+    min_voltage_cell:
+      name: "min voltage cell"
+    max_voltage_cell:
+      name: "max voltage cell"
+    delta_cell_voltage:
+      name: "delta cell voltage"
+    average_cell_voltage:
+      name: "average cell voltage"
+    cell_voltage_1:
+      name: "cell voltage 1"
+    cell_voltage_2:
+      name: "cell voltage 2"
+    cell_voltage_3:
+      name: "cell voltage 3"
+    cell_voltage_4:
+      name: "cell voltage 4"
+    cell_voltage_5:
+      name: "cell voltage 5"
+    cell_voltage_6:
+      name: "cell voltage 6"
+    cell_voltage_7:
+      name: "cell voltage 7"
+    cell_voltage_8:
+      name: "cell voltage 8"
+    cell_voltage_9:
+      name: "cell voltage 9"
+    cell_voltage_10:
+      name: "cell voltage 10"
+    cell_voltage_11:
+      name: "cell voltage 11"
+    cell_voltage_12:
+      name: "cell voltage 12"
+    cell_voltage_13:
+      name: "cell voltage 13"
+    cell_voltage_14:
+      name: "cell voltage 14"
+    cell_voltage_15:
+      name: "cell voltage 15"
+    cell_voltage_16:
+      name: "cell voltage 16"
+    total_voltage:
+      name: "total voltage"
+    current:
+      name: "current"
+    power:
+      name: "power"
+    charging_power:
+      name: "charging power"
+    discharging_power:
+      name: "discharging power"
+    temperature_sensor_1:
+      name: "temperature sensor 1"
+    temperature_sensor_2:
+      name: "temperature sensor 2"
+    mosfet_temperature:
+      name: "mosfet temperature"
+    state_of_charge:
+      name: "state of charge"
+    capacity_remaining:
+      name: "capacity remaining"
+    full_charge_capacity:
+      name: "full charge capacity"
+    charging_cycles:
+      name: "charging cycles"
+    total_charging_cycle_capacity:
+      name: "total charging cycle capacity"
+    balancing_current:
+      name: "balancing current"
+
+    # Resistance de chaque cellule (en ohms)
+    cell_resistance_1:
+      name: "cell resistance 1"
+    cell_resistance_2:
+      name: "cell resistance 2"
+    cell_resistance_3:
+      name: "cell resistance 3"
+    cell_resistance_4:
+      name: "cell resistance 4"
+    cell_resistance_5:
+      name: "cell resistance 5"
+    cell_resistance_6:
+      name: "cell resistance 6"
+    cell_resistance_7:
+      name: "cell resistance 7"
+    cell_resistance_8:
+      name: "cell resistance 8"
+    cell_resistance_9:
+      name: "cell resistance 9"
+    cell_resistance_10:
+      name: "cell resistance 10"
+    cell_resistance_11:
+      name: "cell resistance 11"
+    cell_resistance_12:
+      name: "cell resistance 12"
+    cell_resistance_13:
+      name: "cell resistance 13"
+    cell_resistance_14:
+      name: "cell resistance 14"
+    cell_resistance_15:
+      name: "cell resistance 15"
+    cell_resistance_16:
+      name: "cell resistance 16"
+
+  # --- Batterie 2 ---
+  - platform: jk_bms_ble
+    jk_bms_ble_id: bms1
+    min_cell_voltage:
+      name: "B2 min cell voltage"
+    max_cell_voltage:
+      name: "B2 max cell voltage"
+    min_voltage_cell:
+      name: "B2 min voltage cell"
+    max_voltage_cell:
+      name: "B2 max voltage cell"
+    delta_cell_voltage:
+      name: "B2 delta cell voltage"
+    average_cell_voltage:
+      name: "B2 average cell voltage"
+    cell_voltage_1:
+      name: "B2 cell voltage 1"
+    cell_voltage_2:
+      name: "B2 cell voltage 2"
+    cell_voltage_3:
+      name: "B2 cell voltage 3"
+    cell_voltage_4:
+      name: "B2 cell voltage 4"
+    cell_voltage_5:
+      name: "B2 cell voltage 5"
+    cell_voltage_6:
+      name: "B2 cell voltage 6"
+    cell_voltage_7:
+      name: "B2 cell voltage 7"
+    cell_voltage_8:
+      name: "B2 cell voltage 8"
+    cell_voltage_9:
+      name: "B2 cell voltage 9"
+    cell_voltage_10:
+      name: "B2 cell voltage 10"
+    cell_voltage_11:
+      name: "B2 cell voltage 11"
+    cell_voltage_12:
+      name: "B2 cell voltage 12"
+    cell_voltage_13:
+      name: "B2 cell voltage 13"
+    cell_voltage_14:
+      name: "B2 cell voltage 14"
+    cell_voltage_15:
+      name: "B2 cell voltage 15"
+    cell_voltage_16:
+      name: "B2 cell voltage 16"
+    total_voltage:
+      name: "B2 total voltage"
+    current:
+      name: "B2 current"
+    power:
+      name: "B2 power"
+    charging_power:
+      name: "B2 charging power"
+    discharging_power:
+      name: "B2 discharging power"
+    temperature_sensor_1:
+      name: "B2 temperature sensor 1"
+    temperature_sensor_2:
+      name: "B2 temperature sensor 2"
+    mosfet_temperature:
+      name: "B2 mosfet temperature"
+    state_of_charge:
+      name: "B2 state of charge"
+    capacity_remaining:
+      name: "B2 capacity remaining"
+    full_charge_capacity:
+      name: "B2 full charge capacity"
+    charging_cycles:
+      name: "B2 charging cycles"
+    total_charging_cycle_capacity:
+      name: "B2 total charging cycle capacity"
+    balancing_current:
+      name: "B2 balancing current"
+
+    # Resistance de chaque cellule (en ohms)
+    cell_resistance_1:
+      name: "B2 cell resistance 1"
+    cell_resistance_2:
+      name: "B2 cell resistance 2"
+    cell_resistance_3:
+      name: "B2 cell resistance 3"
+    cell_resistance_4:
+      name: "B2 cell resistance 4"
+    cell_resistance_5:
+      name: "B2 cell resistance 5"
+    cell_resistance_6:
+      name: "B2 cell resistance 6"
+    cell_resistance_7:
+      name: "B2 cell resistance 7"
+    cell_resistance_8:
+      name: "B2 cell resistance 8"
+    cell_resistance_9:
+      name: "B2 cell resistance 9"
+    cell_resistance_10:
+      name: "B2 cell resistance 10"
+    cell_resistance_11:
+      name: "B2 cell resistance 11"
+    cell_resistance_12:
+      name: "B2 cell resistance 12"
+    cell_resistance_13:
+      name: "B2 cell resistance 13"
+    cell_resistance_14:
+      name: "B2 cell resistance 14"
+    cell_resistance_15:
+      name: "B2 cell resistance 15"
+    cell_resistance_16:
+      name: "B2 cell resistance 16"
+
+switch:
+  - platform: jk_bms_ble
+    jk_bms_ble_id: bms0
+    charging:
+      name: "charging"
+    discharging:
+      name: "discharging"
+    balancer:
+      name: "balancer"
+  - platform: ble_client
+    ble_client_id: client0
+    name: "enable bluetooth connection"
+    id: ble_client_switch0
+
+  - platform: jk_bms_ble
+    jk_bms_ble_id: bms1
+    charging:
+      name: "B2 charging"
+    discharging:
+      name: "B2 discharging"
+    balancer:
+      name: "B2 balancer"
+  - platform: ble_client
+    ble_client_id: client1
+    name: "B2 enable bluetooth connection"
+    id: ble_client_switch1
+
+text_sensor:
+  - platform: jk_bms_ble
+    jk_bms_ble_id: bms0
+    errors:
+      name: "errors"
+    balancer_status:
+      name: "balancer status"
+    total_runtime_formatted:
+      name: "total runtime formatted"
+    software_version:
+      name: "software version"
+    hardware_version:
+      name: "hardware version"
+    device_model:
+      name: "device model"
+    serial_number:
+      name: "serial number"
+
+  - platform: jk_bms_ble
+    jk_bms_ble_id: bms1
+    errors:
+      name: "B2 errors"
+    balancer_status:
+      name: "B2 balancer status"
+    total_runtime_formatted:
+      name: "B2 total runtime formatted"
+    software_version:
+      name: "B2 software version"
+    hardware_version:
+      name: "B2 hardware version"
+    device_model:
+      name: "B2 device model"
+    serial_number:
+      name: "B2 serial number"
