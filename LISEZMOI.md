@@ -14,7 +14,7 @@ Vidéo pas à pas (chaîne **Alf Fait Maison**) : *lien à venir*
 ## Installation rapide
 1. Installe **ESPHome Device Builder** dans Home Assistant (Paramètres > Modules complémentaires > Boutique).
 2. Crée un nouvel appareil ESP32, puis clique sur **Modifier** et colle le contenu de `esp32_2_jk_bms.yaml`.
-3. Remplace `XX:XX:XX:XX:XX:01` et `XX:XX:XX:XX:XX:02` par les adresses Bluetooth de tes deux BMS (visibles avec l'appli gratuite nRF Connect : appareils dont le nom commence par JK).
+3. Remplace `XX:XX:XX:XX:XX:01` et `XX:XX:XX:XX:XX:02` par les adresses Bluetooth de tes deux BMS (visibles avec l'appli gratuite nRF Connect : le nom du BMS est soit son numéro de série, qui finit par exemple par `-00` / `-01`, soit commence par JK ; l'adresse est la ligne juste sous le nom).
    ⚠️ Utilise un téléphone **Android** : sur iPhone, Apple masque les adresses Bluetooth et nRF Connect ne les affiche pas.
 4. Rien d'autre à remplir : ESPHome a déjà enregistré ton Wi-Fi à la création de l'appareil.
    (Optionnel : pour chiffrer la connexion, ajoute `encryption:` / `key:` sous `api:`, voir `secrets.exemple.yaml`.)
